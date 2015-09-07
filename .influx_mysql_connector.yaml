@@ -1,0 +1,9 @@
+- table: flow_temps
+  timestamp_column: dt
+  is_unixtime: false
+  measurement: flow
+  measurement_column: flow
+  measurement_name: flow
+  tags: 
+    temp: temp
+
