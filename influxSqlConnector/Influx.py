@@ -1,48 +1,43 @@
 from influxdb import InfluxDBClient
 from dateutil.parser import parse
 import time
-import ConfigParser
 
 class Influx(object):
-    def __init__(self):
-        config = ConfigParser.ConfigParser()
-        config.read('database_config.ini')
-        if 'influx' not in config.sections():
-            raise ValueError("Hey, there is no configuration! Run influx_mysql_config.py first")
-        self.influxClient = InfluxDBClient(config.get('influx', 'host'),
-                                           config.get('influx', 'port'),
-                                           config.get('influx', 'user'),
-                                           config.get('influx', 'password'),
-                                           config.get('influx', 'db'))
+    def __init__(self, config):
+        self.config = config
+        self.influx_client = InfluxDBClient(config.influx_config['host'],
+                                            config.influx_config['port'],
+                                            config.influx_config['user'],
+                                            config.influx_config['password'],
+                                            config.influx_config['db'])
 
     # this doesn't work because Influx doesnt allow it to work
-    def getLastMeasurement(self, Measure):
-        result = self.influxClient.query('SELECT * from {} ORDER BY time LIMIT 1'.format(Measure))
+    def get_last_measurement(self, Measure):
+        result = self.influx_client.query('SELECT * from {} ORDER BY time LIMIT 1'.format(Measure))
         if result.__len__() is 0:
             return 0
         for points in result.get_points():
             point = points
-        timeTuple = parse(point['time']).timetuple()
-        return int(time.mktime(timeTuple))
+        time_tuple = parse(point['time']).timetuple()
+        return int(time.mktime(time_tuple))
 
-    def sendRow(self, job, rowData):
-        # build JSON here.
-        pointValues = self.buildDict(job, rowData)
-        self.influxClient.write_points(pointValues, time_precision='s')
+    def send_row(self, job, row_data):
+        point_values = self.build_dict(job, row_data)
+        self.influx_client.write_points(point_values, time_precision='s')
 
-    def buildDict(self, job, rowData):
+    def build_dict(self, job, row_data):
         tags = {}
         if 'tags' in job.keys():
             i = 2
             for tag, column in job['tags'].iteritems():
-                tags[tag] = rowData[i]
+                tags[tag] = row_data[i]
                 i += 1
-        pointValues = [{
-                "time": rowData[0],
+        point_values = [{
+                "time": row_data[0],
                 "measurement": job['measurement'],
                 'fields': {
-                    'value': rowData[1],
+                    'value': row_data[1],
                 },
                 'tags': tags
                 }]
-        return pointValues
+        return point_values

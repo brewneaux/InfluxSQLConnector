@@ -1,42 +1,42 @@
 import pymysql
-import ConfigParser
 
 class Mysql(object):
 
-    def __init__(self):
-        config = ConfigParser.ConfigParser()
-        config.read('database_config.ini')
-        if 'mysql' not in config.sections():
-            raise ValueError("Hey, there is no configuration! Run influx_mysql_config.py first")
-        self.connection = pymysql.connect(host=config.get('mysql', 'host'),
-                                user=config.get('mysql', 'user'),
-                                password=config.get('mysql', 'password'),
-                                port=int(config.get('mysql', 'port')),
-                                database=config.get('mysql', 'database'))
+    def __init__(self, config):
+        self.config = config
+        self.connection = pymysql.connect(host=config.mysql_config['host'],
+                                user=config.mysql_config['user'],
+                                password=config.mysql_config['password'],
+                                port=int(config.mysql_config['port']),
+                                database=config.mysql_config['database'])
 
-    def query(self, job, lastMeasurement):
+    def query(self, job, last_measurement):
         if job['is_unixtime']:
-            query = self.buildUnixTimeQuery(job, lastMeasurement)
+            query = self.buildUnixTimeQuery(job, last_measurement)
         else:
-            query = self.buildDatetimeQuery(job, lastMeasurement)
+            query = self.buildDatetimeQuery(job, last_measurement)
         return query
 
-    def buildUnixTimeQuery(self, job, lastMeasurement):
+    def buildUnixTimeQuery(self, job, last_measurement):
         query = 'SELECT {} AS timestamp '.format(job['timestamp_column'])
         query += ', {} AS {} '.format(job['measurement'], job['measurement_name'])
         if 'tags' in job.keys():
             for tag, column in job['tags'].iteritems():
                 query += ', {} AS {} '.format(column, tag)
         query += 'FROM {} '.format(job['table'])
-        query += 'WHERE {} > {} '.format(job['timestamp_column'], lastMeasurement)
+        query += 'WHERE {} > {} '.format(job['timestamp_column'], last_measurement)
+        if self.config.test_only is True:
+            query += 'LIMIT 0'
         return query
 
-    def buildDatetimeQuery(self, job, lastMeasurement):
+    def buildDatetimeQuery(self, job, last_measurement):
         query = 'SELECT UNIX_TIMESTAMP({}) AS timestamp '.format(job['timestamp_column'])
         query += ', {} AS {} '.format(job['measurement'], job['measurement_name'])
         if 'tags' in job.keys():
             for tag, column in job['tags'].iteritems():
                 query += ', {} AS {} '.format(column, tag)
         query += 'FROM {} '.format(job['table'])
-        query += 'WHERE UNIX_TIMESTAMP({}) > {} '.format(job['timestamp_column'], lastMeasurement)
+        query += 'WHERE UNIX_TIMESTAMP({}) > {} '.format(job['timestamp_column'], last_measurement)
+        if self.config.test_only is True:
+            query += 'LIMIT 0'
         return query

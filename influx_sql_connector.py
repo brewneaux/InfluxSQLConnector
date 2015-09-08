@@ -12,7 +12,7 @@ Options:
   -j <PATH> --jobs-path <PATH>    Use a custom jobs path
 """
 
-from influxSqlConnector.runner import runner
+from influxSqlConnector.Runner import Runner
 from influxSqlConnector.Mysql import Mysql
 from influxSqlConnector.Influx import Influx
 from influxSqlConnector.Config import Config
@@ -28,7 +28,7 @@ def run_connector(config):
     # step 3: get data, chunk it, write json, send to influx
     influx = Influx(config)
     mysql = Mysql(config)
-    job_runner = runner(Config=config, MysqlConnector=mysql, Influx=influx)
+    job_runner = Runner(Config=config, MysqlConnector=mysql, Influx=influx)
     job_runner.run_jobs()
 
 def init_logger():
@@ -51,14 +51,16 @@ def init_logger():
     root_logger.addHandler(handler)
     root_logger.setLevel(level_map[log_level.upper()])
     root_logger.debug('Initializing logging at {}.'.format(log_file))
+    console = logging.StreamHandler()
+    console.setLevel(logging.WARNING)
+    console.setFormatter(formatter)
+    root_logger.addHandler(console)
     return root_logger
 
 
 if __name__ == "__main__":
     arguments = docopt(__doc__)
     config = Config(arguments)
-    print('configasdfasdf')
-    print(str(config))
     # exit()
     logger = init_logger()
     try:
@@ -67,4 +69,5 @@ if __name__ == "__main__":
     except Exception, e:
         logger.exception('Exception found')
         print "influx_sql_connector: Fatal error:{}".format(e)
+        raise
 
