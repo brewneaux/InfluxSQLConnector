@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     # Application name:
@@ -12,7 +12,7 @@ setup(
     author_email="jon@brewneaux.com",
 
     # Packages
-    packages=["influxSqlConnector"],
+    packages=find_packages(),
 
     # Details
     url="https://github.com/brewneaux/InfluxSQLConnector",
