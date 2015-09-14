@@ -1,5 +1,6 @@
-
+import JobTracker
 import logging
+import time
 
 class Runner(object):
 
@@ -10,30 +11,45 @@ class Runner(object):
         self.MysqlConnector = MysqlConnector
         self.Influx = Influx
         self.config = Config
+        self.tracker = JobTracker.JobTracker()
 
     def run_jobs(self):
         for job_number, job in enumerate(self.config.yaml):
-            if self.job_validator(job_number, job) is False:
-                continue
+            # if self.job_validator(job_number, job) is False:
+            #     continue
             self.logger.info('Running job for measurement: "{}"'.format(job['measurement']))
             measure = job['measurement']
-            last_measure = self.Influx.get_last_measurement(measure)
+            last_measure = self.tracker.get_last_measurement(measure)
+            if last_measure == 0:
+                last_measure = int(time.time()) - (60*60*24*30)
             query = self.MysqlConnector.query(job, last_measure)
-            self.send_points(job, query)
+            last_insert = self.send_points(job, query)
+            self.tracker.insert_measure(measure, last_insert)
+        self.tracker.close_connection()
+
 
     def send_points(self, job, query):
-        data_cursor = self.MysqlConnector.connection.cursor()
+        data_cursor = self.MysqlConnector.get_dict_cursor()
         data_cursor.execute(query)
         total = data_cursor.rowcount
         if total is 0:
             self.logger.error('No points to insert for "{}"'.format(job['measurement']))
         if total > 1000:
-            print("This may take a while...")
+            print("This may take a while... Inserting {} points".format(total))
+        else: 
+            print("Inserting {} points for {}".format(total, job['measurement_name']))
         self.logger.info('Inserting {} points for "{}"'.format(total, job['measurement']))
         row = data_cursor.fetchone()
+        last_insert = 0
         while row is not None:
-            self.Influx.send_row(job, row)
+            if row['timestamp'] == last_insert:
+                timestamp = row['timestamp'] + 1
+            else:
+                timestamp = row['timestamp']
+            last_insert = timestamp
+            self.Influx.send_row(job, row, timestamp)
             row = data_cursor.fetchone()
+        return last_insert
 
     def job_validator(self, job_number, job):
         # required fields: table, timestamp_column, is_unixtime, measurement, measurement_column, measurement_name

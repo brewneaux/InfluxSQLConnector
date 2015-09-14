@@ -26,6 +26,7 @@ setup(
     install_requires=[
         "pymysql",
         "influxdb",
-        "docopt"
+        "docopt",
+        "PyYAML"
     ],
 )

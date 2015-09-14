@@ -21,23 +21,42 @@ class Influx(object):
         time_tuple = parse(point['time']).timetuple()
         return int(time.mktime(time_tuple))
 
-    def send_row(self, job, row_data):
-        point_values = self.build_dict(job, row_data)
-        self.influx_client.write_points(point_values, time_precision='s')
+    def send_row(self, job, row_data, timestamp):
+        point_values = self.build_dict(job, row_data, timestamp)
+        self.influx_client.write_points(point_values, time_precision='ms')
 
-    def build_dict(self, job, row_data):
-        tags = {}
-        if 'tags' in job.keys():
-            i = 2
-            for tag, column in job['tags'].iteritems():
-                tags[tag] = row_data[i]
-                i += 1
-        point_values = [{
-                "time": row_data[0],
-                "measurement": job['measurement'],
-                'fields': {
-                    'value': row_data[1],
-                },
-                'tags': tags
-                }]
-        return point_values
+    def build_dict(self, job, row_data, timestamp):
+        point_values = {
+            "time": timestamp,
+            "measurement": job['measurement'],
+            'fields': {}
+        }
+        if 'fields' in job.keys():
+            for field_name, column_name in job['fields'].iteritems():
+                point_values['fields'][field_name] = self.convert_string(row_data[column_name])
+        else:
+            point_values['fields']['value'] = self.convert_string(row_data[job['measurement_name']])
+        return [point_values]
+
+    def convert_string(self, string_to_convert):
+        if type(string_to_convert) is str:
+            return float(string_to_convert) if '.' in string_to_convert else int(string_to_convert)
+        else:
+            return string_to_convert
+
+    # def build_dict(self, job, row_data, timestamp):
+    #     tags = {}
+    #     if 'tags' in job.keys():
+    #         i = 2
+    #         for tag, column in job['tags'].iteritems():
+    #             tags[tag] = row_data[i]
+    #             i += 1
+    #     point_values = [{
+    #             "time": timestamp,
+    #             "measurement": job['measurement'],
+    #             'fields': {
+    #                 'value': row_data[1],
+    #             },
+    #             'tags': tags
+    #             }]
+    #     return point_values

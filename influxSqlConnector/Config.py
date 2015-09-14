@@ -14,7 +14,7 @@ class Config(object):
     def read_args(self, arguments):
         self.debug = arguments['--debug']
         self.test_only = arguments['--test-only']
-        self.jobs_path = '~/influx_sql_connector/jobs.yaml'
+        self.jobs_path = '~/influx_sql_connector/jobs.yml'
         self.config_path = '~/influx_sql_connector/database_config.ini'
         if arguments['--jobs-path'] is not None:
             self.jobs_path = arguments['--jobs-path']
